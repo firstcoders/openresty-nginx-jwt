@@ -1,4 +1,7 @@
 local jwt = require "resty.jwt"
+local cjson = require "cjson"
+local validators = require "resty.jwt-validators"
+local secret = os.getenv("JWT_SECRET");
 
 -- first try to find JWT token as url parameter e.g. ?token=BLAH
 local token = ngx.var.arg_token
@@ -26,7 +29,7 @@ end
 
 -- validate any specific claims you need here
 -- https://github.com/SkyLothar/lua-resty-jwt#jwt-validators
-local validators = require "resty.jwt-validators"
+
 local claim_spec = {
     -- validators.set_system_leeway(15), -- time in seconds
     -- exp = validators.is_not_expired(),
@@ -37,7 +40,7 @@ local claim_spec = {
 }
 
 -- make sure to set and put "env JWT_SECRET;" in nginx.conf
-local jwt_obj = jwt:verify(os.getenv("JWT_SECRET"), token, claim_spec)
+local jwt_obj = jwt:verify(secret, token, claim_spec)
 if not jwt_obj["verified"] then
     ngx.status = ngx.HTTP_UNAUTHORIZED
     ngx.log(ngx.WARN, jwt_obj.reason)
@@ -49,4 +52,6 @@ end
 -- optionally set Authorization header Bearer token style regardless of how token received
 -- if you want to forward it by setting your nginx.conf something like:
 --     proxy_set_header Authorization $http_authorization;`
-ngx.req.set_header("Authorization", "Bearer " .. token)
+-- ngx.req.set_header("AUTH-TOKEN-DECODED", cjson.encode(jwt_obj))
+
+ngx.req.set_header("AUTH-IDENTITY", cjson.encode(jwt_obj.payload))
